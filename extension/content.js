@@ -6,6 +6,7 @@
   const PRINT_PATH = /^\/manager\/[^/]+\/invoices\/[^/]+\/print\/?$/;
   const VAT_COLUMN = /^vat included\s*\(\s*5\s*%\s*\)$/i;
   const VAT_SUMMARY = /^vat included$/i;
+  const SUBTOTAL = /^subtotal excluding vat$/i;
   const MONEY = /^(?:AED\s*)?-?[\d,]+\.\d{2}(?:\s*AED)?$/i;
   const normalize = (value) => value.replace(/\s+/g, " ").trim();
   const isPrintPage = () => location.origin === "https://tanseek.ae"
@@ -14,6 +15,8 @@
   if (!isPrintPage()) return;
 
   let previousTargets = new Set();
+  let previousLabels = new Map();
+  let enabledForUrl = null;
   let queued = false;
 
   function collectColumn(table, targets) {
@@ -69,11 +72,22 @@
 
   function clean() {
     queued = false;
-    const active = isPrintPage();
+    const active = enabledForUrl === location.href && isPrintPage();
+    if (!active) {
+      enabledForUrl = null;
+      observer.disconnect();
+    }
     document.documentElement.toggleAttribute(ACTIVE, active);
     const targets = new Set();
+    const labels = new Map();
 
     if (active) {
+      for (const [node, change] of previousLabels) {
+        if (node.isConnected && node.nodeValue === change.replacement
+          && node.parentElement.closest(".ip-doc .ip-closing-grid")) {
+          labels.set(node, change);
+        }
+      }
       // These containers were confirmed on the supported live invoice print page.
       for (const invoice of document.querySelectorAll(".ip-doc")) {
         for (const table of invoice.querySelectorAll("table.ip-table")) {
@@ -81,6 +95,16 @@
         }
         for (const section of invoice.querySelectorAll(".ip-closing-grid")) {
           collectSummary(section, targets);
+          const walker = document.createTreeWalker(section, NodeFilter.SHOW_TEXT);
+          while (walker.nextNode()) {
+            const node = walker.currentNode;
+            if (SUBTOTAL.test(normalize(node.nodeValue))) {
+              labels.set(node, {
+                original: node.nodeValue,
+                replacement: node.nodeValue.replace(/subtotal\s+excluding\s+vat/i, "Subtotal")
+              });
+            }
+          }
         }
       }
     }
@@ -90,6 +114,17 @@
     }
     for (const element of targets) element.setAttribute(HIDDEN, "");
     previousTargets = targets;
+
+    for (const [node, change] of previousLabels) {
+      if (!labels.has(node) && node.nodeValue === change.replacement) {
+        node.nodeValue = change.original;
+      }
+    }
+    for (const [node, change] of labels) {
+      if (node.nodeValue !== change.replacement) node.nodeValue = change.replacement;
+    }
+    previousLabels = labels;
+    return { supported: isPrintPage(), hidden: active, matchedCount: targets.size + labels.size };
   }
 
   const observer = new MutationObserver(() => {
@@ -98,13 +133,22 @@
     queueMicrotask(clean);
   });
 
-  // Preserve React-owned nodes and column positions; remove only their layout.
-  // Watching content rather than attributes avoids reacting to our own markers.
-  observer.observe(document.documentElement, {
-    childList: true,
-    characterData: true,
-    subtree: true
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (sender.id !== chrome.runtime.id) return;
+    if (message?.type === "helper-tools:get-state") {
+      sendResponse(clean());
+    } else if (message?.type === "helper-tools:hide-tdata") {
+      if (isPrintPage()) {
+        enabledForUrl = location.href;
+        // Observe late rendering only after the user opts in for this page.
+        observer.observe(document.documentElement, {
+          childList: true, characterData: true, subtree: true
+        });
+      }
+      sendResponse(clean());
+    }
   });
+
   window.addEventListener("beforeprint", clean);
   window.addEventListener("popstate", clean);
   window.addEventListener("pageshow", clean);

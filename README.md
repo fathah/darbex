@@ -1,8 +1,9 @@
 # Tanseek Helper Tools
 
-Small helper tools for supported pages. The current release hides the **VAT
-included (5%)** invoice column and the **VAT included** summary line on screen
-and in browser printing. Prices and totals stay unchanged.
+Small helper tools for supported pages. Click the extension icon, then **Hide
+TData** to hide the **VAT included (5%)** invoice column and the **VAT included**
+summary line, and rename **Subtotal Excluding VAT** to **Subtotal**. These
+changes apply on screen and in browser printing. Prices and totals stay unchanged.
 
 [Download ZIP](https://github.com/fathah/darbex/raw/refs/heads/main/helper-tools.zip)
 · [Download CRX](https://github.com/fathah/darbex/raw/refs/heads/main/helper-tools.crx)
@@ -15,6 +16,8 @@ For ordinary Chrome installations on macOS and Windows, use the ZIP:
 2. Open `chrome://extensions` and enable **Developer mode**.
 3. Click **Load unpacked** and select the extracted folder containing `manifest.json`.
 4. Refresh the invoice print page.
+5. Click the extension icon (pin it from Chrome's Extensions menu if desired),
+   then click **Hide TData**.
 
 Use **Print → Save as PDF** for a PDF with the adjusted layout. The website's
 separate Download PDF button may generate its own output.
@@ -24,10 +27,15 @@ Windows. The signed CRX is provided for environments that support that
 distribution method; downloading it from GitHub does not remove Chrome's
 installation restrictions. See [Chrome's distribution guidance](https://developer.chrome.com/docs/extensions/how-to/distribute/host-on-linux).
 
-The extension has no popup. It runs automatically on supported invoice print
-pages. To restore the original view, disable it and refresh the page. For an
-update, replace the extracted files, reload the extension in Chrome, and refresh
-the invoice page. These downloads do not provide automatic updates.
+Invoice fields stay visible until you click **Hide TData**. The action applies
+only to the current page, including content that finishes loading after the
+click. Refreshing the page restores the original fields and subtotal label.
+Other invoice tabs keep their original layout until you click the button there.
+
+For an update, replace the extracted files, reload the extension in Chrome, and
+refresh the invoice page. Refreshing is also necessary to clear the previous
+release's automatic hiding on an already-open invoice. These downloads do not
+provide automatic updates.
 
 ## Scope and privacy
 

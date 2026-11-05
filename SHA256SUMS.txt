@@ -1,2 +1,2 @@
-4f8481670b5896d2b63177f4ed9fdd1b4493e9edd4cb03edea70466ff065e7da  helper-tools.crx
-c53eba1fe80134d528fdcaddf2da8e800cacc09860d1d75e80d19c0a638c311e  helper-tools.zip
+ca69dfea3c0371f643bcaba569437ee248ef1ea41f58170bbafd1b051870dc01  helper-tools.crx
+4e5872290a9d2dadb0565baac873c6dd1201105b67bc2c0ca9554ecfd4ecce3d  helper-tools.zip
