@@ -7,6 +7,7 @@
   const VAT_COLUMN = /^vat included\s*\(\s*5\s*%\s*\)$/i;
   const VAT_SUMMARY = /^vat included$/i;
   const SUBTOTAL = /^subtotal excluding vat$/i;
+  const TAX_TITLE = /^tax invoice$/i;
   const MONEY = /^(?:AED\s*)?-?[\d,]+\.\d{2}(?:\s*AED)?$/i;
   const normalize = (value) => value.replace(/\s+/g, " ").trim();
   const isPrintPage = () => location.origin === "https://tanseek.ae"
@@ -84,12 +85,25 @@
     if (active) {
       for (const [node, change] of previousLabels) {
         if (node.isConnected && node.nodeValue === change.replacement
-          && node.parentElement.closest(".ip-doc .ip-closing-grid")) {
+          && node.parentElement.closest(".ip-doc .ip-closing-grid, .ip-doc .ip-head :is(h1, h2, h3)")) {
           labels.set(node, change);
         }
       }
       // These containers were confirmed on the supported live invoice print page.
       for (const invoice of document.querySelectorAll(".ip-doc")) {
+        for (const heading of invoice.querySelectorAll(".ip-head :is(h1, h2, h3)")) {
+          if (!TAX_TITLE.test(normalize(heading.textContent))) continue;
+          const walker = document.createTreeWalker(heading, NodeFilter.SHOW_TEXT);
+          while (walker.nextNode()) {
+            const node = walker.currentNode;
+            if (TAX_TITLE.test(normalize(node.nodeValue))) {
+              labels.set(node, {
+                original: node.nodeValue,
+                replacement: node.nodeValue.replace(/tax\s+invoice/i, "INVOICE")
+              });
+            }
+          }
+        }
         for (const table of invoice.querySelectorAll("table.ip-table")) {
           collectColumn(table, targets);
         }

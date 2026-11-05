@@ -2,8 +2,9 @@
 
 Small helper tools for supported pages. Click the extension icon, then **Hide
 TData** to hide the **VAT included (5%)** invoice column and the **VAT included**
-summary line, and rename **Subtotal Excluding VAT** to **Subtotal**. These
-changes apply on screen and in browser printing. Prices and totals stay unchanged.
+summary line, rename **Subtotal Excluding VAT** to **Subtotal**, and change the
+top title from **TAX INVOICE** to **INVOICE**. These changes apply on screen and
+in browser printing. Prices and totals stay unchanged.
 
 [Download ZIP](https://github.com/fathah/darbex/raw/refs/heads/main/helper-tools.zip)
 · [Download CRX](https://github.com/fathah/darbex/raw/refs/heads/main/helper-tools.crx)
@@ -29,7 +30,7 @@ installation restrictions. See [Chrome's distribution guidance](https://develope
 
 Invoice fields stay visible until you click **Hide TData**. The action applies
 only to the current page, including content that finishes loading after the
-click. Refreshing the page restores the original fields and subtotal label.
+click. Refreshing the page restores the original fields, subtotal label, and title.
 Other invoice tabs keep their original layout until you click the button there.
 
 For an update, replace the extracted files, reload the extension in Chrome, and

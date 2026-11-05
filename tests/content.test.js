@@ -13,6 +13,7 @@ const values = ["1", "Example service", "1", "300.00", "2.38", "300.00"];
 
 function fixture(columns = headers, row = values) {
   return `<div class="ip-doc">
+    <header class="ip-head"><h1>Example Typing Centre</h1><h2>TAX INVOICE</h2></header>
     <table class="ip-table"><thead><tr>${columns.map((label) => `<th>${label}</th>`).join("")}</tr></thead>
     <tbody><tr>${row.map((value) => `<td>${value}</td>`).join("")}</tr></tbody></table>
     <section class="ip-closing-grid"><div class="notes"><p>VAT included</p><p>Informational note</p></div>
@@ -78,6 +79,7 @@ test("removes only the VAT column and summary from layout; preserves all invoice
       assert.equal(hidden(dom, document.getElementById(id)), false);
     }
     assert.equal(document.querySelector("#subtotal span").textContent, "Subtotal");
+    assert.equal(document.querySelector(".ip-head h2").textContent, "INVOICE");
     assert.equal(document.querySelector("#subtotal span:last-child").textContent, "AED 297.62");
     assert.equal(hidden(dom, document.querySelector(".totals")), false);
     assert.equal(hidden(dom, document.querySelector(".notes")), false);
@@ -191,6 +193,7 @@ test("supports query variants and restores elements when navigating away", () =>
       assert.equal(dom.window.document.querySelector(`[${HIDDEN}]`), null);
       assert.equal(hidden(dom, dom.window.document.querySelector("#vat-summary")), false);
       assert.equal(dom.window.document.querySelector("#subtotal span").textContent, "Subtotal excluding VAT");
+      assert.equal(dom.window.document.querySelector(".ip-head h2").textContent, "TAX INVOICE");
     } finally { dom.dispose(); }
   }
 });
@@ -215,6 +218,7 @@ test("leaves VAT fields and the original subtotal label visible until the button
     await settle();
     assert.equal(document.querySelector(`[${HIDDEN}]`), null);
     assert.equal(document.querySelector("#subtotal span").textContent, "Subtotal excluding VAT");
+    assert.equal(document.querySelector(".ip-head h2").textContent, "TAX INVOICE");
     for (const row of document.querySelector("table").rows) {
       assert.equal(hidden(dom, row.cells[4]), false);
     }
@@ -267,6 +271,34 @@ test("resets the action on another invoice URL and after a fresh page load", () 
     assert.equal(dom.state().hidden, false);
     assert.equal(dom.window.document.querySelector(`[${HIDDEN}]`), null);
     assert.equal(dom.window.document.querySelector("#subtotal span").textContent, "Subtotal excluding VAT");
+    assert.equal(dom.window.document.querySelector(".ip-head h2").textContent, "TAX INVOICE");
     assert.equal(dom.hide().hidden, true);
   } finally { dom.dispose(); refreshed.dispose(); }
+});
+
+test("renames only the invoice heading after opt-in, including late rendering and print", async () => {
+  const dom = open("");
+  try {
+    const { document, Event } = dom.window;
+    dom.hide();
+    document.body.innerHTML = fixture() + '<p id="outside-title">TAX INVOICE</p>';
+    document.querySelector(".notes").insertAdjacentHTML("beforeend", '<p id="invoice-note">TAX INVOICE</p>');
+    await settle();
+    const heading = document.querySelector(".ip-head h2");
+    assert.equal(heading.textContent, "INVOICE");
+    assert.equal(document.querySelector(".ip-head h1").textContent, "Example Typing Centre");
+    assert.equal(document.querySelector("#outside-title").textContent, "TAX INVOICE");
+    assert.equal(document.querySelector("#invoice-note").textContent, "TAX INVOICE");
+    heading.innerHTML = "<span> TAX INVOICE </span>";
+    const textNode = heading.querySelector("span").firstChild;
+    await settle();
+    assert.equal(heading.textContent, " INVOICE ");
+    assert.equal(heading.querySelector("span").firstChild, textNode);
+    for (let i = 0; i < 3; i += 1) dom.window.dispatchEvent(new Event("beforeprint"));
+    await settle();
+    assert.equal(heading.textContent, " INVOICE ");
+    dom.reconfigure({ url: PRINT_URL.replace("example-invoice", "another-invoice") });
+    dom.window.dispatchEvent(new Event("popstate"));
+    assert.equal(heading.textContent, " TAX INVOICE ");
+  } finally { dom.dispose(); }
 });
