@@ -1,0 +1,13 @@
+{
+  "name": "invoice-helper-tools-development",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "pack": "node scripts/package-extension.mjs"
+  },
+  "devDependencies": {
+    "crx3": "2.0.0",
+    "jsdom": "29.1.1"
+  }
+}

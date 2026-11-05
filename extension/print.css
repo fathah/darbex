@@ -1,0 +1,4 @@
+/* This applies on screen and in Chrome's Print / Save as PDF output. */
+html[data-darbex-active] [data-darbex-hidden] {
+  display: none !important;
+}

@@ -1,0 +1,2 @@
+4f8481670b5896d2b63177f4ed9fdd1b4493e9edd4cb03edea70466ff065e7da  helper-tools.crx
+c53eba1fe80134d528fdcaddf2da8e800cacc09860d1d75e80d19c0a638c311e  helper-tools.zip
