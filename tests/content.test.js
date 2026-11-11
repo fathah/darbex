@@ -161,16 +161,12 @@ test("matches case and whitespace changes and supports definition-list summaries
   } finally { dom.dispose(); }
 });
 
-test("does nothing outside the exact HTTPS Tanseek invoice print route", () => {
+test("does nothing outside the exact domain", () => {
   for (const url of [
-    PRINT_URL.replace("https:", "http:"),
     PRINT_URL.replace("tanseek.ae", "example.com"),
     PRINT_URL.replace("tanseek.ae", "demo.tanseek.ae"),
     PRINT_URL.replace("tanseek.ae", "tanseek.ae.example.com"),
-    PRINT_URL.replace("/print?", "?"),
-    PRINT_URL.replace("/print?", "/print-preview?"),
-    PRINT_URL.replace("/print?", "/print/extra?"),
-    "https://tanseek.ae/manager/example-centre/customers"
+    PRINT_URL.replace("tanseek.ae", "www.tanseek.ae")
   ]) {
     const dom = open(fixture(), url);
     try {
@@ -179,6 +175,40 @@ test("does nothing outside the exact HTTPS Tanseek invoice print route", () => {
       assert.equal(dom.window.document.documentElement.hasAttribute("data-darbex-active"), false, url);
     } finally { dom.dispose(); }
   }
+});
+
+test("supports every path on the domain without checking invoice routes", () => {
+  for (const url of [
+    "https://tanseek.ae/",
+    "http://tanseek.ae/dashboard",
+    PRINT_URL.replace("/print?", "?"),
+    PRINT_URL.replace("/print?", "/print-preview?"),
+    PRINT_URL.replace("/print?", "/print/extra?"),
+    "https://tanseek.ae/manager/example-centre/customers?view=all#details"
+  ]) {
+    const dom = open(fixture(), url);
+    try {
+      assert.equal(dom.state().supported, true, url);
+      assert.equal(dom.state().hidden, false, url);
+      assert.equal(dom.hide().hidden, true, url);
+      assert.equal(hidden(dom, dom.window.document.querySelector("#vat-summary")), true, url);
+      assert.equal(dom.window.document.querySelector("#subtotal span").textContent, "Subtotal", url);
+      assert.equal(dom.window.document.querySelector(".ip-head h2").textContent, "INVOICE", url);
+    } finally { dom.dispose(); }
+  }
+});
+
+test("can opt in before invoice content appears on a non-print route", async () => {
+  const dom = open("<main>Dashboard</main>", "https://tanseek.ae/dashboard");
+  try {
+    assert.equal(dom.state().supported, true);
+    assert.equal(dom.hide().matchedCount, 0);
+    dom.window.document.body.innerHTML = fixture();
+    await settle();
+    assert.equal(dom.state().hidden, true);
+    assert.equal(hidden(dom, dom.window.document.querySelector("#vat-summary")), true);
+    assert.equal(dom.window.document.querySelector(".ip-head h2").textContent, "INVOICE");
+  } finally { dom.dispose(); }
 });
 
 test("supports query variants and restores elements when navigating away", () => {
@@ -198,9 +228,9 @@ test("supports query variants and restores elements when navigating away", () =>
   }
 });
 
-test("uses Manifest V3 and grants content access only on the specified host and path", () => {
+test("uses Manifest V3 and grants content access on every path of the exact domain", () => {
   assert.equal(manifest.manifest_version, 3);
-  assert.deepEqual(manifest.content_scripts[0].matches, ["https://tanseek.ae/manager/*/invoices/*/print*"]);
+  assert.deepEqual(manifest.content_scripts[0].matches, ["*://tanseek.ae/*"]);
   assert.equal(manifest.permissions, undefined);
   assert.equal(manifest.host_permissions, undefined);
   assert.equal(manifest.background, undefined);

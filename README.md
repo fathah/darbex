@@ -40,16 +40,18 @@ provide automatic updates.
 
 ## Scope and privacy
 
-The extension is restricted to this HTTPS route:
+The extension checks only the exact domain, with access to all its pages:
 
 ```text
-https://tanseek.ae/manager/{centre}/invoices/{invoice-id}/print
+*://tanseek.ae/*
 ```
 
-Query strings such as `?variant=without-government-fees` are accepted. Element
-matching targets the supported English invoice markup. Other sites, subdomains,
-and non-print pages are outside its scope. Navigation into a print page without
-loading a new document may require a refresh.
+**Hide TData** is available on any page on that domain, regardless of its path,
+query string, or invoice variant. The [Chrome match pattern](https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns)
+covers HTTP and HTTPS. Other domains and subdomains are outside its scope.
+The action changes only the supported English invoice elements when present,
+including invoice content rendered later without a full page load. Refresh
+already-open pages after installing or reloading the extension.
 
 It reads page labels and invoice amounts locally to identify which layout
 elements to hide. It makes no network requests, stores no invoice data, uses no

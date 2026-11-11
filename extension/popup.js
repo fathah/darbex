@@ -9,7 +9,7 @@
     document.body.removeAttribute("data-error");
     button.disabled = !state?.supported || state.hidden;
     if (!state?.supported) {
-      status.textContent = "Open a supported invoice print page, then refresh it.";
+      status.textContent = "Open tanseek.ae, then refresh the page.";
     } else if (state.hidden) {
       status.textContent = state.matchedCount
         ? "TData hidden for this page. Refresh to restore."
@@ -39,7 +39,7 @@
       showState(state);
     } catch {
       document.body.setAttribute("data-error", "");
-      status.textContent = "Refresh the invoice page, then open Helper Tools again.";
+      status.textContent = "Refresh the page, then open Helper Tools again.";
     } finally {
       button.removeAttribute("aria-busy");
     }

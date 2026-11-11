@@ -3,17 +3,15 @@
 
   const ACTIVE = "data-darbex-active";
   const HIDDEN = "data-darbex-hidden";
-  const PRINT_PATH = /^\/manager\/[^/]+\/invoices\/[^/]+\/print\/?$/;
   const VAT_COLUMN = /^vat included\s*\(\s*5\s*%\s*\)$/i;
   const VAT_SUMMARY = /^vat included$/i;
   const SUBTOTAL = /^subtotal excluding vat$/i;
   const TAX_TITLE = /^tax invoice$/i;
   const MONEY = /^(?:AED\s*)?-?[\d,]+\.\d{2}(?:\s*AED)?$/i;
   const normalize = (value) => value.replace(/\s+/g, " ").trim();
-  const isPrintPage = () => location.origin === "https://tanseek.ae"
-    && PRINT_PATH.test(location.pathname);
+  const isSupportedSite = () => location.hostname === "tanseek.ae";
 
-  if (!isPrintPage()) return;
+  if (!isSupportedSite()) return;
 
   let previousTargets = new Set();
   let previousLabels = new Map();
@@ -73,7 +71,7 @@
 
   function clean() {
     queued = false;
-    const active = enabledForUrl === location.href && isPrintPage();
+    const active = enabledForUrl === location.href && isSupportedSite();
     if (!active) {
       enabledForUrl = null;
       observer.disconnect();
@@ -138,7 +136,7 @@
       if (node.nodeValue !== change.replacement) node.nodeValue = change.replacement;
     }
     previousLabels = labels;
-    return { supported: isPrintPage(), hidden: active, matchedCount: targets.size + labels.size };
+    return { supported: isSupportedSite(), hidden: active, matchedCount: targets.size + labels.size };
   }
 
   const observer = new MutationObserver(() => {
@@ -152,7 +150,7 @@
     if (message?.type === "helper-tools:get-state") {
       sendResponse(clean());
     } else if (message?.type === "helper-tools:hide-tdata") {
-      if (isPrintPage()) {
+      if (isSupportedSite()) {
         enabledForUrl = location.href;
         // Observe late rendering only after the user opts in for this page.
         observer.observe(document.documentElement, {
