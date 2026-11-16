@@ -105,7 +105,7 @@
 
     if (active) {
       for (const invoice of document.querySelectorAll(".ip-doc")) {
-        for (const heading of invoice.querySelectorAll(".ip-head, .ip-head *")) {
+        for (const heading of invoice.querySelectorAll(".ip-head, .ip-head *, .ip-letterhead-document-title > strong")) {
           if (!TAX_TITLE.test(sourceLabel(heading))) continue;
           if ([...heading.children].some((child) => TAX_TITLE.test(sourceLabel(child)))) continue;
           replaceLabel(heading, "Invoice", edits);

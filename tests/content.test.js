@@ -426,3 +426,20 @@ test("applies title case to a styled header label and releases it when the label
     assert.equal(title.textContent, "Receipt");
   } finally { dom.dispose(); }
 });
+
+test("renames the separate English title below an uploaded letterhead", () => {
+  const dom = open(fixture().replace(/<header.*?<\/header>/, `<header class="ip-letterhead"><img alt="Centre letterhead"></header>
+    <div class="ip-letterhead-document-title"><span lang="ar" dir="rtl">فاتورة ضريبية</span><strong>Tax Invoice</strong></div>`));
+  try {
+    const { document, Event } = dom.window;
+    const title = document.querySelector(".ip-letterhead-document-title strong");
+    dom.hide();
+    dom.window.dispatchEvent(new Event("beforeprint"));
+    assert.equal(title.textContent, "Invoice");
+    assert.equal(document.querySelector("[lang=ar]").textContent, "فاتورة ضريبية");
+    assert.equal(dom.window.getComputedStyle(title).textTransform, "none");
+    dom.reconfigure({ url: "https://tanseek.ae/dashboard" });
+    dom.window.dispatchEvent(new Event("popstate"));
+    assert.equal(title.textContent, "Tax Invoice");
+  } finally { dom.dispose(); }
+});
