@@ -65,7 +65,7 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 const hidden = (dom, element) => dom.window.getComputedStyle(element).display === "none";
 const summary = (dom, id) => dom.window.document.querySelector(`#${id} > :last-child`).textContent;
 
-test("shows net prices and total, retaining the recorded payment and zero balance on a paid invoice", () => {
+test("hides VAT details and preserves all displayed prices, totals and payments", () => {
   const dom = open();
   try {
     dom.hide();
@@ -76,27 +76,26 @@ test("shows net prices and total, retaining the recorded payment and zero balanc
       assert.equal(hidden(dom, row.cells[column]), column === 4);
     }
     assert.equal(hidden(dom, document.querySelector("#vat-summary")), true);
-    for (const id of ["subtotal", "total", "paid", "balance"]) {
+    for (const id of ["total", "paid", "balance"]) {
       assert.equal(hidden(dom, document.getElementById(id)), false);
     }
-    assert.equal(document.querySelector("#subtotal span").textContent, "Subtotal");
+    assert.equal(hidden(dom, document.querySelector("#subtotal")), true);
     assert.equal(document.querySelector(".ip-head h2").textContent, "INVOICE");
     assert.equal(document.querySelector("#subtotal span:last-child").textContent, "AED 297.62");
     assert.equal(hidden(dom, document.querySelector(".totals")), false);
     assert.equal(hidden(dom, document.querySelector(".notes")), false);
-    assert.equal(header.cells[3].textContent, "Unit price");
-    assert.deepEqual([...row.cells].map((cell) => cell.textContent),
-      ["1", "Example service", "1", "297.62", "2.38", "297.62"]);
-    assert.equal(summary(dom, "total"), "AED 297.62");
+    assert.equal(header.cells[3].textContent, headers[3]);
+    assert.deepEqual([...row.cells].map((cell) => cell.textContent), values);
+    assert.equal(summary(dom, "total"), "AED 300.00");
     assert.equal(summary(dom, "paid"), "AED 300.00");
     assert.equal(summary(dom, "balance"), "AED 0.00");
-    assert.equal(document.querySelectorAll(`[${HIDDEN}]`).length, 3);
+    assert.equal(document.querySelectorAll(`[${HIDDEN}]`).length, 4);
   } finally { dom.dispose(); }
 });
 
-test("deducts the invoice's AED 30.56 VAT once on screen and print, then restores the original amounts", async () => {
-  const row = ["1", "Example service", "2", "2,727.50", "30.56", "5,455.00"];
-  const dom = open(fixture(headers, row)
+test("hides the VAT-exclusive amount and subtotal while showing AED 5,455.00 on screen and print", async () => {
+  const row = ["1", "Example service", "2", "2,727.50", "30.56", "5,455.00", "5,424.44"];
+  const dom = open(fixture([...headers, "Amount without VAT"], row)
     .replace("AED 297.62", "AED 5,424.44")
     .replace("AED 2.38", "AED 30.56")
     .replace("AED 300.00", "AED <b>5,455.00</b>")
@@ -113,12 +112,16 @@ test("deducts the invoice's AED 30.56 VAT once on screen and print, then restore
     dom.window.dispatchEvent(new Event("beforeprint"));
     await settle();
     assert.equal(summary(dom, "subtotal"), "AED 5,424.44");
-    assert.equal(summary(dom, "total"), "AED 5,424.44");
-    assert.equal(summary(dom, "balance"), "AED 5,424.44");
+    assert.equal(summary(dom, "total"), "AED 5,455.00");
+    assert.equal(summary(dom, "balance"), "AED 5,455.00");
     assert.equal(summary(dom, "paid"), "AED 0.00");
     assert.equal(document.querySelector("#total b").firstChild, totalDigits);
-    assert.equal(cells[3].textContent, "2,712.22");
-    assert.equal(cells[5].textContent, "5,424.44");
+    assert.deepEqual([...cells].map((cell) => cell.textContent), row);
+    for (const tableRow of document.querySelector("table").rows) {
+      assert.equal(hidden(dom, tableRow.cells[6]), true);
+      assert.equal(hidden(dom, tableRow.cells[5]), false);
+    }
+    assert.equal(hidden(dom, document.querySelector("#subtotal")), true);
 
     dom.reconfigure({ url: "https://tanseek.ae/dashboard" });
     dom.window.dispatchEvent(new Event("popstate"));
@@ -129,7 +132,7 @@ test("deducts the invoice's AED 30.56 VAT once on screen and print, then restore
   } finally { dom.dispose(); }
 });
 
-test("preserves fees in the total and applies partial payments after removing VAT", async () => {
+test("preserves site updates to total, balance and partial payments while VAT details are hidden", async () => {
   const dom = open(fixture()
     .replace('<div id="total">', '<div><span>Other fees</span><span>AED 20.00</span></div><div id="total">')
     .replace("AED 300.00", "AED 320.00")
@@ -138,16 +141,15 @@ test("preserves fees in the total and applies partial payments after removing VA
   try {
     const { document, Event } = dom.window;
     dom.hide();
-    assert.equal(summary(dom, "total"), "AED 317.62");
-    assert.equal(summary(dom, "balance"), "AED 217.62");
-    // The site can write a new gross total equal to the number currently displayed.
+    assert.equal(summary(dom, "total"), "AED 320.00");
+    assert.equal(summary(dom, "balance"), "AED 220.00");
     document.querySelector("#total span:last-child").firstChild.data = "AED 317.62";
-    document.querySelector("#vat-summary > :last-child").textContent = "AED 1.62";
+    document.querySelector("#balance > :last-child").textContent = "AED 167.62";
     document.querySelector("#paid > :last-child").textContent = "AED 150.00";
     dom.window.dispatchEvent(new Event("beforeprint"));
     await settle();
-    assert.equal(summary(dom, "total"), "AED 316.00");
-    assert.equal(summary(dom, "balance"), "AED 166.00");
+    assert.equal(summary(dom, "total"), "AED 317.62");
+    assert.equal(summary(dom, "balance"), "AED 167.62");
     assert.equal(summary(dom, "paid"), "AED 150.00");
   } finally { dom.dispose(); }
 });
@@ -161,8 +163,8 @@ test("finds the VAT column after reordering instead of hiding a fixed position",
     assert.equal(hidden(dom, row.cells[2]), true);
     assert.equal(hidden(dom, row.cells[4]), false);
     assert.equal(hidden(dom, row.cells[5]), false);
-    assert.equal(row.cells[4].textContent, "297.62");
-    assert.equal(row.cells[5].textContent, "297.62");
+    assert.equal(row.cells[4].textContent, "300.00");
+    assert.equal(row.cells[5].textContent, "300.00");
   } finally { dom.dispose(); }
 });
 
@@ -183,12 +185,12 @@ test("handles delayed rendering, added rows and repeated print events without sh
       assert.equal(hidden(dom, row.cells[4]), true);
       assert.equal(hidden(dom, row.cells[5]), false);
     }
-    assert.equal(tbody.rows[1].cells[5].textContent, "38.10");
+    assert.equal(tbody.rows[1].cells[5].textContent, "40.00");
     document.querySelector(".totals").outerHTML = `<div class="totals"><div id="new-vat"><span>VAT included</span><span>AED 4.28</span></div><div id="new-total"><span>Total</span><span>AED 340.00</span></div></div>`;
     await settle();
     assert.equal(hidden(dom, document.querySelector("#new-vat")), true);
     assert.equal(hidden(dom, document.querySelector("#new-total")), false);
-    assert.equal(document.querySelector("#new-total span:last-child").textContent, "AED 335.72");
+    assert.equal(document.querySelector("#new-total span:last-child").textContent, "AED 340.00");
   } finally { dom.dispose(); }
 });
 
@@ -227,7 +229,7 @@ test("matches case and whitespace changes and supports definition-list summaries
     assert.equal(hidden(dom, document.querySelector("thead tr").cells[4]), true);
     assert.equal(hidden(dom, document.querySelector("dt")), true);
     assert.equal(hidden(dom, document.querySelector("dd")), true);
-    assert.equal(summary(dom, "total"), "AED 297.62");
+    assert.equal(summary(dom, "total"), "AED 300.00");
   } finally { dom.dispose(); }
 });
 
@@ -262,7 +264,7 @@ test("supports every path on the domain without checking invoice routes", () => 
       assert.equal(dom.state().hidden, false, url);
       assert.equal(dom.hide().hidden, true, url);
       assert.equal(hidden(dom, dom.window.document.querySelector("#vat-summary")), true, url);
-      assert.equal(dom.window.document.querySelector("#subtotal span").textContent, "Subtotal", url);
+      assert.equal(hidden(dom, dom.window.document.querySelector("#subtotal")), true, url);
       assert.equal(dom.window.document.querySelector(".ip-head h2").textContent, "INVOICE", url);
     } finally { dom.dispose(); }
   }
@@ -325,7 +327,7 @@ test("leaves VAT fields and the original subtotal label visible until the button
     assert.equal(hidden(dom, document.querySelector("#vat-summary")), false);
     assert.equal(dom.hide().hidden, true);
     assert.equal(hidden(dom, document.querySelector("#vat-summary")), true);
-    assert.equal(document.querySelector("#subtotal span").textContent, "Subtotal");
+    assert.equal(hidden(dom, document.querySelector("#subtotal")), true);
   } finally { dom.dispose(); }
 });
 
@@ -339,22 +341,27 @@ test("ignores unrelated messages and other senders", () => {
   } finally { dom.dispose(); }
 });
 
-test("keeps subtotal text nodes and handles re-rendered labels without repeated mutations", async () => {
-  const dom = open(fixture().replace("Subtotal excluding VAT", "  Subtotal Excluding VAT  "));
+test("hides Amount without VAT independently and releases cells when the site reuses them", async () => {
+  const columns = ["Description", "Amount  without&nbsp;VAT", "Amount"];
+  const dom = open(fixture(columns, ["Service", "297.62", "300.00"])
+    .replace("Subtotal excluding VAT", "<strong>AMOUNT WITHOUT VAT</strong>"));
   try {
     const { document } = dom.window;
-    const label = document.querySelector("#subtotal span");
-    const originalTextNode = label.firstChild;
+    const [header, row] = document.querySelector("table").rows;
+    const subtotal = document.querySelector("#subtotal");
+    assert.equal(hidden(dom, row.cells[1]), false);
     dom.hide();
+    assert.equal(hidden(dom, header.cells[1]), true);
+    assert.equal(hidden(dom, row.cells[1]), true);
+    assert.equal(hidden(dom, row.cells[2]), false);
+    assert.equal(hidden(dom, subtotal), true);
+
+    header.cells[1].textContent = "Government fees";
+    subtotal.firstElementChild.textContent = "Subtotal";
     await settle();
-    assert.equal(label.firstChild, originalTextNode);
-    assert.equal(label.textContent, "  Subtotal  ");
-    dom.hide();
-    assert.equal(label.textContent, "  Subtotal  ");
-    label.innerHTML = "<span>Subtotal excluding VAT</span>";
-    await settle();
-    assert.equal(label.textContent, "Subtotal");
-    assert.equal(dom.state().hidden, true);
+    assert.equal(hidden(dom, header.cells[1]), false);
+    assert.equal(hidden(dom, row.cells[1]), false);
+    assert.equal(hidden(dom, subtotal), false);
   } finally { dom.dispose(); }
 });
 

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Tanseek Helper Tools",
-  "version": "1.0.5",
-  "description": "Show VAT-exclusive invoice prices, totals and balances on screen and in browser printing with Hide TData.",
+  "version": "1.0.6",
+  "description": "Hide VAT columns and summary lines on invoices and browser printouts with Hide TData.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
