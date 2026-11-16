@@ -80,7 +80,7 @@ test("hides VAT details and preserves all displayed prices, totals and payments"
       assert.equal(hidden(dom, document.getElementById(id)), false);
     }
     assert.equal(hidden(dom, document.querySelector("#subtotal")), true);
-    assert.equal(document.querySelector(".ip-head h2").textContent, "INVOICE");
+    assert.equal(document.querySelector(".ip-head h2").textContent, "Invoice");
     assert.equal(document.querySelector("#subtotal span:last-child").textContent, "AED 297.62");
     assert.equal(hidden(dom, document.querySelector(".totals")), false);
     assert.equal(hidden(dom, document.querySelector(".notes")), false);
@@ -265,7 +265,7 @@ test("supports every path on the domain without checking invoice routes", () => 
       assert.equal(dom.hide().hidden, true, url);
       assert.equal(hidden(dom, dom.window.document.querySelector("#vat-summary")), true, url);
       assert.equal(hidden(dom, dom.window.document.querySelector("#subtotal")), true, url);
-      assert.equal(dom.window.document.querySelector(".ip-head h2").textContent, "INVOICE", url);
+      assert.equal(dom.window.document.querySelector(".ip-head h2").textContent, "Invoice", url);
     } finally { dom.dispose(); }
   }
 });
@@ -279,7 +279,7 @@ test("can opt in before invoice content appears on a non-print route", async () 
     await settle();
     assert.equal(dom.state().hidden, true);
     assert.equal(hidden(dom, dom.window.document.querySelector("#vat-summary")), true);
-    assert.equal(dom.window.document.querySelector(".ip-head h2").textContent, "INVOICE");
+    assert.equal(dom.window.document.querySelector(".ip-head h2").textContent, "Invoice");
   } finally { dom.dispose(); }
 });
 
@@ -392,20 +392,37 @@ test("renames only the invoice heading after opt-in, including late rendering an
     document.querySelector(".notes").insertAdjacentHTML("beforeend", '<p id="invoice-note">TAX INVOICE</p>');
     await settle();
     const heading = document.querySelector(".ip-head h2");
-    assert.equal(heading.textContent, "INVOICE");
+    assert.equal(heading.textContent, "Invoice");
     assert.equal(document.querySelector(".ip-head h1").textContent, "Example Typing Centre");
     assert.equal(document.querySelector("#outside-title").textContent, "TAX INVOICE");
     assert.equal(document.querySelector("#invoice-note").textContent, "TAX INVOICE");
     heading.innerHTML = "<span> TAX INVOICE </span>";
     const textNode = heading.querySelector("span").firstChild;
     await settle();
-    assert.equal(heading.textContent, " INVOICE ");
+    assert.equal(heading.textContent, " Invoice ");
     assert.equal(heading.querySelector("span").firstChild, textNode);
     for (let i = 0; i < 3; i += 1) dom.window.dispatchEvent(new Event("beforeprint"));
     await settle();
-    assert.equal(heading.textContent, " INVOICE ");
+    assert.equal(heading.textContent, " Invoice ");
     dom.reconfigure({ url: PRINT_URL.replace("example-invoice", "another-invoice") });
     dom.window.dispatchEvent(new Event("popstate"));
     assert.equal(heading.textContent, " TAX INVOICE ");
+  } finally { dom.dispose(); }
+});
+
+test("applies title case to a styled header label and releases it when the label changes", async () => {
+  const dom = open(fixture().replace("<h2>TAX INVOICE</h2>", '<div class="title"><b>Tax Invoice</b></div>'));
+  try {
+    const { document } = dom.window;
+    const title = document.querySelector(".title b");
+    dom.hide();
+    assert.equal(title.textContent, "Invoice");
+    assert.equal(dom.window.getComputedStyle(title).textTransform, "none");
+    assert.deepEqual([...document.querySelectorAll("[data-darbex-title]")], [title]);
+
+    title.textContent = "Receipt";
+    await settle();
+    assert.equal(document.querySelector("[data-darbex-title]"), null);
+    assert.equal(title.textContent, "Receipt");
   } finally { dom.dispose(); }
 });

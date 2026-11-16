@@ -81,7 +81,7 @@ test("the real content script enables the popup on a path outside the former pri
     assert.equal(page.window.document.querySelector("h2").textContent, "TAX INVOICE");
     button.click();
     await settle();
-    assert.equal(page.window.document.querySelector("h2").textContent, "INVOICE");
+    assert.equal(page.window.document.querySelector("h2").textContent, "Invoice");
     assert.match(status.textContent, /hidden for this page/i);
     // Reset the opt-in to disconnect its observer before closing the DOM.
     page.reconfigure({ url: "https://tanseek.ae/another-page" });

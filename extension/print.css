@@ -2,3 +2,8 @@
 html[data-darbex-active] [data-darbex-hidden] {
   display: none !important;
 }
+
+html[data-darbex-active] [data-darbex-title],
+html[data-darbex-active] [data-darbex-title] * {
+  text-transform: none !important;
+}

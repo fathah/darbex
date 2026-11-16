@@ -2,7 +2,7 @@
 
 Click the extension icon and choose **Hide TData** to hide the **Amount without VAT**
 and **VAT included (5%)** columns, along with the **Subtotal excluding VAT** and
-**VAT included** summary lines. The title changes from **TAX INVOICE** to **INVOICE**.
+**VAT included** summary lines. The title changes from **Tax Invoice** to **Invoice**.
 The screen and browser printout use the invoice's original unit prices, line
 amounts, total, paid amount, and balance due.
 

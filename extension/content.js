@@ -3,6 +3,7 @@
 
   const ACTIVE = "data-darbex-active";
   const HIDDEN = "data-darbex-hidden";
+  const TITLE = "data-darbex-title";
   const VAT_COLUMN = /^vat included\s*\(\s*5\s*%\s*\)$/i;
   const VAT_SUMMARY = /^vat included$/i;
   const WITHOUT_VAT = /^(?:amount|subtotal) (?:without|excluding) vat$/i;
@@ -14,6 +15,7 @@
   if (!isSupportedSite()) return;
 
   let previousTargets = new Set();
+  let previousTitles = new Set();
   let previousText = new Map();
   let enabledForUrl = null;
 
@@ -82,6 +84,13 @@
     }
   }
 
+  function updateMarkers(attribute, previous, current) {
+    for (const element of previous) {
+      if (!current.has(element)) element.removeAttribute(attribute);
+    }
+    for (const element of current) element.toggleAttribute(attribute, true);
+  }
+
   function clean() {
     acceptSiteEdits(observer.takeRecords());
     const active = enabledForUrl === location.href && isSupportedSite();
@@ -91,12 +100,16 @@
     }
     document.documentElement.toggleAttribute(ACTIVE, active);
     const targets = new Set();
+    const titles = new Set();
     const edits = new Map();
 
     if (active) {
       for (const invoice of document.querySelectorAll(".ip-doc")) {
-        for (const heading of invoice.querySelectorAll(".ip-head :is(h1, h2, h3)")) {
-          if (TAX_TITLE.test(sourceLabel(heading))) replaceLabel(heading, "INVOICE", edits);
+        for (const heading of invoice.querySelectorAll(".ip-head, .ip-head *")) {
+          if (!TAX_TITLE.test(sourceLabel(heading))) continue;
+          if ([...heading.children].some((child) => TAX_TITLE.test(sourceLabel(child)))) continue;
+          replaceLabel(heading, "Invoice", edits);
+          titles.add(heading);
         }
         for (const table of invoice.querySelectorAll("table.ip-table")) {
           collectColumns(table, targets);
@@ -107,11 +120,10 @@
       }
     }
 
-    for (const element of previousTargets) {
-      if (!targets.has(element)) element.removeAttribute(HIDDEN);
-    }
-    for (const element of targets) element.setAttribute(HIDDEN, "");
+    updateMarkers(HIDDEN, previousTargets, targets);
+    updateMarkers(TITLE, previousTitles, titles);
     previousTargets = targets;
+    previousTitles = titles;
 
     for (const [node, change] of previousText) {
       if (!edits.has(node) && node.nodeValue === change.replacement) {
