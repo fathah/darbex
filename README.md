@@ -3,8 +3,11 @@
 Small helper tools for supported pages. Click the extension icon, then **Hide
 TData** to hide the **VAT included (5%)** invoice column and the **VAT included**
 summary line, rename **Subtotal Excluding VAT** to **Subtotal**, and change the
-top title from **TAX INVOICE** to **INVOICE**. These changes apply on screen and
-in browser printing. Prices and totals stay unchanged.
+top title from **TAX INVOICE** to **INVOICE**. The screen and browser printout
+show line amounts and unit prices excluding each line's recorded VAT. The total
+deducts the invoice's VAT, and the balance due accounts for the payment already
+recorded. For example, an unpaid AED 5,455.00 invoice with AED 30.56 VAT shows
+AED 5,424.44 as both the total and the balance due.
 
 [Download ZIP](https://github.com/fathah/darbex/raw/refs/heads/main/helper-tools.zip)
 · [Download CRX](https://github.com/fathah/darbex/raw/refs/heads/main/helper-tools.crx)
@@ -30,7 +33,7 @@ installation restrictions. See [Chrome's distribution guidance](https://develope
 
 Invoice fields stay visible until you click **Hide TData**. The action applies
 only to the current page, including content that finishes loading after the
-click. Refreshing the page restores the original fields, subtotal label, and title.
+click. Refreshing the page restores the original amounts, fields, and labels.
 Other invoice tabs keep their original layout until you click the button there.
 
 For an update, replace the extracted files, reload the extension in Chrome, and
@@ -53,8 +56,8 @@ The action changes only the supported English invoice elements when present,
 including invoice content rendered later without a full page load. Refresh
 already-open pages after installing or reloading the extension.
 
-It reads page labels and invoice amounts locally to identify which layout
-elements to hide. It makes no network requests, stores no invoice data, uses no
+It reads page labels and invoice amounts locally to calculate the displayed
+prices and totals. It makes no network requests, stores no invoice data, uses no
 analytics, and does not change saved invoice records. Original DOM nodes are
 retained to preserve the website's rendering behavior.
 
@@ -79,5 +82,4 @@ is excluded from Git. Keep a private backup and reuse it for future CRX updates.
 The downloadable files contain no private signing key.
 
 Automated DOM tests cover URL restrictions, reordered columns, delayed content,
-and preserving amounts. The packaged extension still needs an installation and
-print-preview check in the target browser.
+VAT deductions, paid and unpaid balances, and restoration of the original invoice.

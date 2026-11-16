@@ -15,7 +15,7 @@
         ? "TData hidden for this page. Refresh to restore."
         : "Waiting for invoice fields. They will hide when the page loads.";
     } else {
-      status.textContent = "Hide TData for this page and its printout.";
+      status.textContent = "Show amounts excluding VAT on this page and its printout.";
     }
   }
 

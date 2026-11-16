@@ -63,8 +63,9 @@ function open(html = fixture(), url = PRINT_URL) {
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 const hidden = (dom, element) => dom.window.getComputedStyle(element).display === "none";
+const summary = (dom, id) => dom.window.document.querySelector(`#${id} > :last-child`).textContent;
 
-test("removes only the VAT column and summary from layout; preserves all invoice amounts", () => {
+test("shows net prices and total, retaining the recorded payment and zero balance on a paid invoice", () => {
   const dom = open();
   try {
     dom.hide();
@@ -83,8 +84,71 @@ test("removes only the VAT column and summary from layout; preserves all invoice
     assert.equal(document.querySelector("#subtotal span:last-child").textContent, "AED 297.62");
     assert.equal(hidden(dom, document.querySelector(".totals")), false);
     assert.equal(hidden(dom, document.querySelector(".notes")), false);
-    assert.deepEqual([...row.cells].map((cell) => cell.textContent), values);
+    assert.equal(header.cells[3].textContent, "Unit price");
+    assert.deepEqual([...row.cells].map((cell) => cell.textContent),
+      ["1", "Example service", "1", "297.62", "2.38", "297.62"]);
+    assert.equal(summary(dom, "total"), "AED 297.62");
+    assert.equal(summary(dom, "paid"), "AED 300.00");
+    assert.equal(summary(dom, "balance"), "AED 0.00");
     assert.equal(document.querySelectorAll(`[${HIDDEN}]`).length, 3);
+  } finally { dom.dispose(); }
+});
+
+test("deducts the invoice's AED 30.56 VAT once on screen and print, then restores the original amounts", async () => {
+  const row = ["1", "Example service", "2", "2,727.50", "30.56", "5,455.00"];
+  const dom = open(fixture(headers, row)
+    .replace("AED 297.62", "AED 5,424.44")
+    .replace("AED 2.38", "AED 30.56")
+    .replace("AED 300.00", "AED <b>5,455.00</b>")
+    .replace("AED 0.00", "AED 5,455.00")
+    .replace("AED 300.00", "AED 0.00"));
+  try {
+    const { document, Event } = dom.window;
+    const cells = document.querySelector("tbody tr").cells;
+    const totalDigits = document.querySelector("#total b").firstChild;
+    dom.hide();
+    await settle();
+    dom.state();
+    dom.hide();
+    dom.window.dispatchEvent(new Event("beforeprint"));
+    await settle();
+    assert.equal(summary(dom, "subtotal"), "AED 5,424.44");
+    assert.equal(summary(dom, "total"), "AED 5,424.44");
+    assert.equal(summary(dom, "balance"), "AED 5,424.44");
+    assert.equal(summary(dom, "paid"), "AED 0.00");
+    assert.equal(document.querySelector("#total b").firstChild, totalDigits);
+    assert.equal(cells[3].textContent, "2,712.22");
+    assert.equal(cells[5].textContent, "5,424.44");
+
+    dom.reconfigure({ url: "https://tanseek.ae/dashboard" });
+    dom.window.dispatchEvent(new Event("popstate"));
+    assert.equal(summary(dom, "total"), "AED 5,455.00");
+    assert.equal(summary(dom, "balance"), "AED 5,455.00");
+    assert.deepEqual([...cells].map((cell) => cell.textContent), row);
+    assert.equal(document.querySelector("thead tr").cells[3].textContent, headers[3]);
+  } finally { dom.dispose(); }
+});
+
+test("preserves fees in the total and applies partial payments after removing VAT", async () => {
+  const dom = open(fixture()
+    .replace('<div id="total">', '<div><span>Other fees</span><span>AED 20.00</span></div><div id="total">')
+    .replace("AED 300.00", "AED 320.00")
+    .replace("AED 300.00", "AED 100.00")
+    .replace("AED 0.00", "AED 220.00"));
+  try {
+    const { document, Event } = dom.window;
+    dom.hide();
+    assert.equal(summary(dom, "total"), "AED 317.62");
+    assert.equal(summary(dom, "balance"), "AED 217.62");
+    // The site can write a new gross total equal to the number currently displayed.
+    document.querySelector("#total span:last-child").firstChild.data = "AED 317.62";
+    document.querySelector("#vat-summary > :last-child").textContent = "AED 1.62";
+    document.querySelector("#paid > :last-child").textContent = "AED 150.00";
+    dom.window.dispatchEvent(new Event("beforeprint"));
+    await settle();
+    assert.equal(summary(dom, "total"), "AED 316.00");
+    assert.equal(summary(dom, "balance"), "AED 166.00");
+    assert.equal(summary(dom, "paid"), "AED 150.00");
   } finally { dom.dispose(); }
 });
 
@@ -97,6 +161,8 @@ test("finds the VAT column after reordering instead of hiding a fixed position",
     assert.equal(hidden(dom, row.cells[2]), true);
     assert.equal(hidden(dom, row.cells[4]), false);
     assert.equal(hidden(dom, row.cells[5]), false);
+    assert.equal(row.cells[4].textContent, "297.62");
+    assert.equal(row.cells[5].textContent, "297.62");
   } finally { dom.dispose(); }
 });
 
@@ -117,10 +183,12 @@ test("handles delayed rendering, added rows and repeated print events without sh
       assert.equal(hidden(dom, row.cells[4]), true);
       assert.equal(hidden(dom, row.cells[5]), false);
     }
+    assert.equal(tbody.rows[1].cells[5].textContent, "38.10");
     document.querySelector(".totals").outerHTML = `<div class="totals"><div id="new-vat"><span>VAT included</span><span>AED 4.28</span></div><div id="new-total"><span>Total</span><span>AED 340.00</span></div></div>`;
     await settle();
     assert.equal(hidden(dom, document.querySelector("#new-vat")), true);
     assert.equal(hidden(dom, document.querySelector("#new-total")), false);
+    assert.equal(document.querySelector("#new-total span:last-child").textContent, "AED 335.72");
   } finally { dom.dispose(); }
 });
 
@@ -134,6 +202,7 @@ test("does not hide a similarly placed column when the VAT header is absent", as
     for (const row of document.querySelector("table").rows) {
       assert.equal(hidden(dom, row.cells[4]), false);
     }
+    assert.deepEqual([...document.querySelector("tbody tr").cells].map((cell) => cell.textContent), values);
   } finally { dom.dispose(); }
 });
 
@@ -158,6 +227,7 @@ test("matches case and whitespace changes and supports definition-list summaries
     assert.equal(hidden(dom, document.querySelector("thead tr").cells[4]), true);
     assert.equal(hidden(dom, document.querySelector("dt")), true);
     assert.equal(hidden(dom, document.querySelector("dd")), true);
+    assert.equal(summary(dom, "total"), "AED 297.62");
   } finally { dom.dispose(); }
 });
 
